@@ -171,10 +171,6 @@ func evaluate(input string) {
 		return resultArr[i].city < resultArr[j].city
 	})
 
-	fmt.Println(resultArr[0].city == "Aadorf" && resultArr[0].min == -99.9 && resultArr[0].max == 99.9 && resultArr[0].avg == -0.1)
-	fmt.Println(resultArr[100].city == "Al Bāḩah" && resultArr[100].min == -99.9 && resultArr[100].max == 99.9 && resultArr[100].avg == -0.2)
-	fmt.Println(resultArr[1000].city == "Birkerød" && resultArr[1000].min == -99.9 && resultArr[1000].max == 99.9 && resultArr[1000].avg == 0.4)
-
 	var stringsBuilder strings.Builder
 	for _, i := range resultArr {
 		stringsBuilder.WriteString(fmt.Sprintf("%s=%.1f/%.1f/%.1f, ", i.city, i.min, i.avg, i.max))

@@ -100,6 +100,10 @@ func evaluate(input string) string {
 		return resultArr[i].city < resultArr[j].city
 	})
 
+	fmt.Println(resultArr[0].city == "Aburi" && resultArr[0].min == 72)
+	fmt.Println(resultArr[10].city == "Baretha" && resultArr[10].min == 0)
+	fmt.Println(resultArr[50].city == "Los Ríos" && resultArr[50].min == 82.7)
+
 	var stringsBuilder strings.Builder
 	for _, i := range resultArr {
 		stringsBuilder.WriteString(fmt.Sprintf("%s=%.1f/%.1f/%.1f, ", i.city, i.min, i.avg, i.max))
