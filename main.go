@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"flag"
 	"fmt"
@@ -84,7 +85,7 @@ func evaluate(input string) {
 		log.Fatalf("Failed to open file with mmap: %v", err)
 	}
 	defer readerAt.Close()
-	fileSize := readerAt.Len()
+	fileSize := int64(readerAt.Len())
 	var cursor int64
 
 	mapOfTemp := swiss.NewMap[mapkey, *cityTemperatureInfo](maxcity)
@@ -101,7 +102,7 @@ func evaluate(input string) {
 			for {
 				start := atomic.AddInt64(&cursor, int64(chunkSize)) - int64(chunkSize)
 				// fmt.Printf("Worker %d processing segment starting at %d\n", workerID, start)
-				if int(start) >= fileSize {
+				if start >= fileSize {
 					resultStream <- toSend
 					fmt.Println("Worker", workerID, "finished")
 					return
@@ -116,7 +117,7 @@ func evaluate(input string) {
 				}
 
 				if end == chunkSize {
-					pos, total := nextNewLine(readerAt, start+end)
+					pos, total := nextNewLine(readerAt, start+end, fileSize)
 					if pos != -1 {
 						end += pos + 1
 						buffer = append(buffer, total...)
@@ -124,11 +125,19 @@ func evaluate(input string) {
 				}
 
 				if start != 0 {
-					pos, _ := nextNewLine(readerAt, start)
+					pos, _ := nextNewLine(readerAt, start, fileSize)
 					start = pos + 1
 				}
-				segment := buffer[start:end]
-				parseSegment(toSend, segment, workerID)
+
+				dist := (end - start) / 2
+				pos, _ := nextNewLine(bytes.NewReader(buffer[start:end]), dist, end-start)
+				segment1 := buffer[start : start+dist+pos+1]
+				segment2 := buffer[start+dist+pos+1 : end]
+				parseSegment(toSend, segment1, workerID)
+				parseSegment(toSend, segment2, workerID)
+
+				//segment := buffer[start:end]
+				//parseSegment(toSend, segment, workerID)
 			}
 		}(i)
 	}
@@ -181,10 +190,9 @@ func evaluate(input string) {
 	}
 }
 
-func nextNewLine(readerAt *mmap.ReaderAt, start int64) (int64, []byte) {
+func nextNewLine(readerAt io.ReaderAt, start int64, fileSize int64) (int64, []byte) {
 	cursor := start
 	const bufferSize = 1 << 6
-	fileSize := int64((*readerAt).Len())
 	var totalBuffer []byte
 	buffer := make([]byte, bufferSize)
 
@@ -196,9 +204,10 @@ func nextNewLine(readerAt *mmap.ReaderAt, start int64) (int64, []byte) {
 		readSize := min(bufferSize, fileSize-cursor)
 
 		buffer = buffer[:readSize]
-		_, err := (*readerAt).ReadAt(buffer, cursor)
+		_, err := readerAt.ReadAt(buffer, cursor)
 		if err != nil {
 			log.Fatal("Reading file failed:", err)
+			return -1, []byte{}
 		}
 		totalBuffer = append(totalBuffer, buffer...)
 
